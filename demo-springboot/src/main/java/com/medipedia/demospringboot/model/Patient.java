@@ -9,6 +9,8 @@ public class Patient {
 	private String patientAddr;
 	private List<String> diseases;
 	
+	private String doctorName;
+	
 	public Patient() {
 	
 	}
