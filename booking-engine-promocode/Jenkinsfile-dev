@@ -1,0 +1,105 @@
+node {
+  try {
+    notifyBuild('STARTED')
+    stage('Checkout'){
+    checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'CleanBeforeCheckout']], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'bbc9887a-b8af-4e67-a8c4-25e313f09ef5', url: 'https://github.com/Techolution/booking-promocode-be.git']]])
+    }
+
+    stage("Build application war file"){
+    echo 'Starting Build'
+    sh "git rev-parse HEAD > commit-id"                        
+    commit_id = readFile('commit-id')
+    sh "echo $commit_id"
+    //sh "sed 's/IMAGE_TAG/\$(cat .git/commit-id)/g' deploy/kube-deployment.yml"
+    sh "mvn install:install-file -Dfile=./lib/rest-web-model-1.3.0.jar -DgroupId='com.tl.booking.common' -DartifactId='rest-web-model' -Dversion=1.3.0 -Dpackaging=jar -DgeneratePom=true"
+    sh "mvn install:install-file -Dfile=./lib/entity-1.3.0.jar -DgroupId='com.tl.booking.common' -DartifactId='entity' -Dversion=1.3.0 -Dpackaging=jar -DgeneratePom=true"
+    sh "mvn install:install-file -Dfile=./lib/libraries-1.3.0.jar -DgroupId='com.tl.booking.common' -DartifactId='libraries' -Dversion=1.3.0 -Dpackaging=jar -DgeneratePom=true"
+    sh "mvn clean install"
+    }
+    
+    stage("SONARQUBE Analysis"){
+    echo 'Starting Analysis'
+    withSonarQubeEnv('Sonarqube-Server') {
+    sh "mvn sonar:sonar -Dsonar.host.url=http://172.16.4.18:8080 -Dsonar.login=1b5b7ad7a62a7e19c201f6fd57248d76600ad812"
+    }
+    }
+    // waiting for sonar results based into the configured web hook in Sonar server which push the status back to jenkins
+ //   stage("Quality Gate"){
+ //         timeout(time: 10, unit: 'MINUTES') {
+ //             def qg = waitForQualityGate()
+ //             if (qg.status != 'OK') {
+//                  error "Pipeline aborted due to quality gate failure: ${qg.status}"
+//              }
+//          }
+//      }
+    
+    stage("Build application Docker image"){
+    echo 'Starting Build Image'
+    sh "docker build -t booking-promocode-be ."
+    sh "docker tag booking-promocode-be asia.gcr.io/prismatic-fact-201508/booking-promocode-be:build-id-${BUILD_NUMBER}"
+    sh "docker tag booking-promocode-be asia.gcr.io/prismatic-fact-201508/booking-promocode-be:latest"
+    }
+    
+    stage 'Push Docker Image to GCR' 
+    docker.withRegistry('https://asia.gcr.io', 'gcr:prismatic-fact-201508') {
+        sh "docker push asia.gcr.io/prismatic-fact-201508/booking-promocode-be:build-id-${BUILD_NUMBER}"
+        sh "docker push asia.gcr.io/prismatic-fact-201508/booking-promocode-be:latest"
+    }
+    
+    stage ("Run app on Kubernetes"){
+     echo "Connecting to Active cluster at development NameSpace : booking-active (development)"
+     sh "gcloud container clusters get-credentials booking-active --region asia-southeast1"
+     //sh "kubectl delete deployment booking-promocode-be"
+     //sh "kubectl run booking-promocode-be --port=8181 --image=asia.gcr.io/prismatic-fact-201508/booking-promocode-be:$commit_id"
+     //sh "kubectl create -f deploy/kube-deployment.yml --set spec.template.spec.containers[0].image=asia.gcr.io/prismatic-fact-201508/booking-promocode-be:$commit_id"
+      //sh "for i in `kubectl get pods |grep core|awk '{print $1}'`; do kubectl get pods $i -o yaml >> deployment.yaml; done"
+      sh "chmod +x deploy/deployApp.sh"
+      sh "deploy/deployApp.sh dev"
+    }
+  } catch (e) {
+     // If there was an exception thrown, the build failed
+     currentBuild.result = "FAILED"
+     throw e
+   } finally {
+   // Create Promocode Image Tags Property File for reference for PROD Build
+   def valuesT = sh (script: "gcloud container images list-tags asia.gcr.io/prismatic-fact-201508/booking-promocode-be --limit=5 | awk '{print \$2}' ", returnStdout: true)
+   valuesT = valuesT.replaceAll('\\n',',')
+   valuesT = valuesT.replaceAll('latest,','')
+   valuesT = valuesT.replaceAll('production,','')
+   valuesT = valuesT.replaceAll('TAGS,','TAGS = ')
+   sh "echo ${valuesT} > /tmp/promocode_imagestags.properties"
+     
+     // Success or failure, always send notifications
+     notifyBuild(currentBuild.result)
+   }
+}
+
+def notifyBuild(String buildStatus = 'STARTED') {
+  // build status of null means successful
+  buildStatus =  buildStatus ?: 'SUCCESSFUL'
+
+  // Default values
+  def colorName = 'RED'
+  def colorCode = '#FF0000'
+  def subject = "Build ${buildStatus}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'"
+  def summary = "${subject} (${env.BUILD_URL})"
+  def details = "Jenkins Build ${buildStatus}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' Check console output at ${env.BUILD_URL} "
+ 
+  // Override default values based on build status
+  if (buildStatus == 'STARTED') {
+    color = 'YELLOW'
+    colorCode = '#FFFF00'
+  } else if (buildStatus == 'SUCCESSFUL') {
+    color = 'GREEN'
+    colorCode = '#00FF00'
+  } else {
+    color = 'RED'
+    colorCode = '#FF0000'
+  }
+
+  // Send notifications
+  slackSend (color: colorCode, message: summary)
+  //emailext body: 'A Test EMail', recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']], subject: 'Test'
+  emailext subject: subject, body: details, recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']]
+
+}

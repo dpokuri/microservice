@@ -1,0 +1,46 @@
+info.name=@project.name@
+info.version=@project.version@
+management.context-path=/application
+management.security.enabled=false
+management.health.diskspace.threshold=5368709120
+server.compression.enabled=true
+server.compression.mime-types=text/html,text/xml,text/plain,text/css,application/javascript,application/json
+
+server.context-path=/promo.code
+server.port=8183
+
+spring.data.mongodb.database=promoCode
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.repositories.enabled=true
+spring.cache.type=redis
+spring.redis.host=localhost
+spring.redis.port=6379
+spring.redis.password=197eadef69e4957631a5c3cf97961b33
+
+spring.mvc.async.request-timeout=4000
+server.tomcat.min-spare-threads=5
+server.tomcat.max-threads=50
+server.tomcat.max-connections=10000
+
+# API properties
+example.api.baseHttpClientTotalMax=2000
+example.api.baseHttpClientTotalPerRoute=2000
+example.api.connectTimeout=10000
+example.api.readTimeout=10000
+example.api.host=http://demo0678510.mockable.io
+example.api.proxyUse=0
+example.api.proxyHost=proxy.ext.gdn-commerce.com
+example.api.proxyPort=8080
+example.api.proxyUsername=username
+example.api.proxyPassword=password
+example.api.lock.wait.timeout=10000
+
+# Logging Setting
+log.file.directory=logs/mongo
+
+#Scheduler Configuration
+promocode.scheduler.maxThread=200
+promocode.scheduler.minIdleThread=50
+promocode.scheduler.threadTtl=50
+promocode.scheduler.maxQueue=20000
