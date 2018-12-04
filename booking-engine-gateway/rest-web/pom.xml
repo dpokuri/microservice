@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <artifactId>gateway</artifactId>
+    <groupId>com.tl.booking.gateway</groupId>
+    <version>1.1.5-SNAPSHOT</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+  <name>gateway</name>
+  <artifactId>rest-web</artifactId>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.springfox</groupId>
+      <artifactId>springfox-swagger2</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.springfox</groupId>
+      <artifactId>springfox-swagger-ui</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.tl.booking.gateway</groupId>
+      <artifactId>service-impl</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.tl.booking.gateway</groupId>
+      <artifactId>outbound-impl</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.tl.booking.gateway</groupId>
+      <artifactId>libraries</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.tl.booking.gateway</groupId>
+      <artifactId>rest-web-model</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.mongobee</groupId>
+      <artifactId>mongobee</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.ooxi</groupId>
+      <artifactId>serialized-php-parser</artifactId>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>1.5.8.RELEASE</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>

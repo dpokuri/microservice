@@ -1,0 +1,102 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    run: booking-gateway
+  name: booking-gateway
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: booking-gateway
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        run: booking-gateway
+    spec:
+      containers:
+        - name: zipkin-collector
+          image: asia.gcr.io/prismatic-fact-201508/zipkin-collector:latest
+        - name: booking-gateway
+          image: asia.gcr.io/prismatic-fact-201508/booking-gateway:latest
+          imagePullPolicy: Always
+          resources:
+          requests:
+            memory: "1500Mi"
+            cpu: "300m"
+          limits:
+            memory: "1500Mi"
+            cpu: "300m"
+          ports:
+          - containerPort: 8534
+          env:
+          - name: SPRING_DATA_MONGODB_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: gateway-secret-config
+                key: dbname
+          - name: SPRING_DATA_MONGODB_USER
+            valueFrom:
+              secretKeyRef:
+                name: gateway-secret-config
+                key: username
+          - name: SPRING_DATA_MONGODB_PWD
+            valueFrom:
+              secretKeyRef:
+                name: gateway-secret-config
+                key: password
+          - name: SPRING_DATA_REDIS_PWD
+            valueFrom:
+              secretKeyRef:
+                name: gateway-secret-config
+                key: redis_pwd
+          volumeMounts:
+          - mountPath: /app/config
+            name: gateway-config
+      volumes:
+       - configMap:
+           defaultMode: 420
+           name: gateway-config
+         name: gateway-config
+         
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  annotations:
+  labels:
+   app: booking-gateway
+  name: booking-gateway-hpa
+  namespace: development
+spec:
+  maxReplicas: 5
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: apps/v1beta1
+    kind: Deployment
+    name: booking-gateway
+  targetCPUUtilizationPercentage: 30  
+  
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: booking-gateway
+  name: booking-gateway
+  namespace: development
+spec:
+  ports:
+    - name: booking-gateway
+      port: 8534
+      protocol: TCP
+      targetPort: 8534
+  selector:
+    run: booking-gateway
+  type: ClusterIP
